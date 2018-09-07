@@ -1,0 +1,61 @@
+1.6 字典中的键映射多个值
+使用collections模块中的defaultdict来构造这样的字典，defaultdict会自动初始化每个key刚开始对应的值
+可以在一个普通的字典上使用setdefault()方法来代替，但是每次调用都得创建一个新的初始值的实例(例子程序中的空列表[])
+d = {} # A regular dictionary
+d.setdefault('a', []).append(1)
+创建一个多值映射字典很简单，但是对于值的初始化可能会有点麻烦
+d = {}
+for key, value in pairs:
+    if key not in d:
+        d[key] = []
+    d[key].append(value)
+如果使用defaultdict的话代码就更加简洁了：
+from collections import defaultdict
+d = defaultdict(list)
+for key, value in pairs:
+    d[key].append(value)
+------------------------------------------------------------------------------------------------
+1.7 字典排序
+使用collections模块中的OrderedDict类，在迭代操作的时候它会保持元素被插入时的顺序
+（构建一个将来需要序列化或编码成其他格式的映射的时候，OrderedDict是非常有用的）
+OrderedDict内部维护了一个双向链表，会根据元素加入的顺序来排列键的位置，第一个新加入的元素会被放到链表的尾部
+OrderedDict的大小是一个普通字典的两倍，涉及数据量很大(读取100,000行CSV数据到一个OrderedDict中)，需权衡使用OrderedDict的好处与额外内存消耗的影响
+--------------------------------------------------------------------------------------------------
+1.8 字典的运算
+prices = {'ACME': 45.23,'AAPL': 612.78,'IBM': 205.55,'HPQ': 37.20,'FB': 10.75}
+字典上执行常见的数据操作，只会处理键，而不是值
+min(prices) # Returns 'AAPL'
+但想要在字典的值集合上执行这些计算，使用字典的values()方法来解决
+min(prices.values()) # Returns 10.75
+还想要知道对应的键的信息(比如那种股票价格是最低的？)，可以在min()和max()函数中提供key函数参数来获取最小值或最大值对应的键的信息
+min(prices, key=lambda k: prices[k]) # Returns 'FB'
+但还想要得到最小值，又得执行一次查找操作
+min_value = prices[min(prices, key=lambda k: prices[k])]
+可以用zip()函数方案通过将字典”反转”为(值，键)元组序列，当比较两个元组的时候，值会先进行比较，然后才是键
+注意：当多个实体拥有相同的value值，会用key作为判定结果的依据
+-----------------------------------------------------------------------------------------------------------
+1.9 查找两字典的相同点
+字典就是一系列键和值之间的映射集合
+需要对字典的键做常见的集合操作，使用字典的keys()方法，返回keys-view对象，不比先将它们转化为集合
+a.keys() & b.keys()  # { 'x', 'y' }     # Find keys in common
+a.keys() - b.keys()  # { 'z' }          # Find keys in a that are not in b
+字典的items()方法返回由(key,value)对组成的items-view对象，支持类似的集合操作
+a.items() & b.items() # { ('y', 2) }    # Find (key,value) pairs in common
+但字典的values()方法不支持集合操作，部分原因是从值的角度看不能保证所有的值是唯一的。可以先将值转化为集合来实现
+-----------------------------------------------------------------------------------------------------
+1.10 删除序列相同元素并保持顺序
+参数key的作用是指定一个函数将序列中的元素转化为可以哈希的类型（在它的生存期内必须不可变，需要有一个__hash__()方法）
+def dedupe(items, key=None):     # 模仿了内置函数sorted(),min()和max()对key函数的使用方法
+    seen = set()
+    for item in items:
+        val = item if key is None else key(item)
+        if val not in seen:
+            yield item
+            seen.add(val)
+用生成器，令这个函数尽可能通用，不必只能对列表进行处理
+如果只是想消除重复元素，通常可以简单的构造一个集合
+---------------------------------------------------------------------------------------------
+1.13 对切片命名
+代码中如果出现大量的硬编码下标值会使得可读性和可维护性大大降低，对切片命名可以更加清晰
+切片对象s，可以分别调用它的s.start, s.stop, s.step属性来获取更多的信息
+通过调用切片的indices(size)方法将它映射到一个确定大小的序列上，这个方法返回一个三元组(start,stop,step)，避免出现IndexError异常
