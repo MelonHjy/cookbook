@@ -1,0 +1,66 @@
+1.12 序列中出现次数最多的元素
+collections.Counter 类就是专门为这类问题而设计的，提供 most_common() 方法映射
+Counter 对象可以接受任意的 hashable 序列对象作为输入。在底层实现上， Counter 是一个字典，在元素和它们出现的次数间做了映射
+Counter 对象可以和各种数学运算操作相结合
+当需要对数据制表或计数，比起利用字典手写算法，用Counter对象更好
+----------------------------------------------------------------------------------
+1.13 通过某个关键字排序一个字典列表
+from operator import itemgetter
+rows_by_fname = sorted(rows, key=itemgetter('fname'))
+rows_by_lfname = sorted(rows, key=itemgetter('lname','fname'))
+函数operator.itemgetter()接受的参数可作为查询的标记，它可以是字典的键名称、用数字表示的列表元素或是任何可以传给对象的__getitem__()方法的值，
+若传多个标记给itemgetter()，它产生的可调用对象讲返回一个包含所有元素在内的元组
+可用lambda表达式来取代itemgetter()的功能
+rows_by_fname = sorted(rows, key=lambda r: r['fname'])
+rows_by_lfname = sorted(rows, key=lambda r: (r['lname'],r['fname']))
+但是用itemgetter()通常运行得更快
+适用于min()和max()等函数
+------------------------------------------------------------------------------------
+1.14 排序不支持原生比较的对象
+想在同一个类的实例之间做排序，但它们并不原生支持比较操作
+内置的 sorted() 函数有一个关键字参数 key ，可以传入一个 callable 对象给它，这个 callable 对象对每个传入的对象返回一个值，
+这个值会被 sorted 用来排序这些对象
+class User:
+    def __init__(self, user_id):
+        self.user_id = user_id
+    def __repr__(self):
+        return 'User({})'.format(self.user_id)
+
+users = [User(23), User(3), User(99)]
+print(users)                                   # [User(23), User(3), User(99)]
+print(sorted(users, key=lambda u: u.user_id))  # [User(3), User(23), User(99)]
+另外一种方式是使用 operator.attrgetter() 来代替lambda函数：
+from operator import attrgetter
+sorted(users, key=attrgetter('user_id'))       # [User(3), User(23), User(99)]
+attrgetter() 函数通常会运行的快点，并且还能同时允许多个字段进行比较。这个跟 operator.itemgetter() 函数作用于字典类型很类似
+by_name = sorted(users, key=attrgetter('last_name', 'first_name'))
+同样适用于像 min() 和 max() 之类的函数
+---------------------------------------------------------------------------------------------------------
+1.15 通过某个字段将记录分组
+rows = [
+    {'address': '5412 N CLARK', 'date': '07/01/2012'},
+    {'address': '5800 E 58TH', 'date': '07/02/2012'},
+    {'address': '4801 N BROADWAY', 'date': '07/01/2012'},
+]
+from operator import itemgetter
+from itertools import groupby
+rows.sort(key=itemgetter('date'))    # Sort by the desired field first
+for date, items in groupby(rows, key=itemgetter('date')):    # Iterate in groups
+    print(date)
+    for i in items:
+        print(' ', i)
+运行结果：
+07/01/2012
+  {'date': '07/01/2012', 'address': '5412 N CLARK'}
+  {'date': '07/01/2012', 'address': '4801 N BROADWAY'}
+07/02/2012
+  {'date': '07/02/2012', 'address': '5800 E 58TH'}
+函数groupby() 通过扫描序列找出拥有相同值（或是由参数key指定的函数所返回的值）的序列项，并将它们分组
+groupby() 创建了一个迭代器，每次迭代时会返回一个值和一个子迭代器，这个子迭代器可以产生所有在该分组内具有该值的项
+groupby() 仅仅检查连续的元素，所以首先要根据指定的字段将数据排序
+如果仅仅是想根据date字段将数据分组到一个大的数据结构中去，并且允许随机访问，那么最好使用 defaultdict() 来构建一个多值字典
+from collections import defaultdict
+rows_by_date = defaultdict(list)
+for row in rows:
+    rows_by_date[row['date']].append(row)
+不考虑内存方面的因素，利用defaultdict会比先排休再用groupby()迭代更快
