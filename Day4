@@ -1,0 +1,109 @@
+1.16 过滤序列元素
+最简单的过滤序列元素的方法就是使用列表推导（缺点是若原始输入非常大，可能会产生一个庞大的结果）
+>>> mylist = [1, 4, -5, 10, -7, 2, 3, -1]
+>>> [n for n in mylist if n > 0]    # [1, 4, 10, 2, 3]
+>>> [n for n in mylist if n < 0]    # [-5, -7, -1]
+可以使用生成器表达式通过迭代的方式产生筛选结果
+>>> pos = (n for n in mylist if n > 0)
+>>> pos
+<generator object <genexpr> at 0x1006a0eb0>
+>>> for x in pos:
+... print(x)
+列表推导式和生成器表达式具有同时对数据转换的能力
+>>> import math
+>>> [math.sqrt(n) for n in mylist if n > 0]
+[1.0, 2.0, 3.1622776601683795, 1.4142135623730951, 1.7320508075688772]
+当筛选的标准没法简单表示在列表推导式或生成器表达式时，可以将处理筛选逻辑的代码放到单独的函数中，然后使用內建的filter()函数处理
+filter()创建了一个迭代器，若想要列表形式，需加上list()
+values = ['1', '2', '-3', '-', '4', 'N/A', '5']
+def is_int(val):
+    try:
+        x = int(val)
+        return True
+    except ValueError:
+        return False
+ivals = list(filter(is_int, values))
+print(ivals)    # Outputs ['1', '2', '-3', '4', '5']
+若想用新值替换掉不满足标准的值时（不丢弃它们），可以通过将筛选条件移到一个条件表达式中
+>>> clip_neg = [n if n > 0 else 0 for n in mylist]
+>>> clip_neg    # [1, 4, 0, 10, 0, 2, 3, 0]
+当需要用另外一个相关联的序列来过滤某个序列的时候，使用itertools.compress()，它以一个 iterable 对象和一个相对应的Boolean选择器序列作为输入参数，
+然后输出 iterable 对象中对应选择器为True的元素（compress() 也是返回的一个迭代器）
+addresses = [
+    '5412 N CLARK',
+    '5148 N CLARK',
+    '5800 E 58TH',
+    '2122 N CLARK'
+]
+counts = [ 0, 3, 10, 4 ]
+>>> from itertools import compress
+>>> more5 = [n > 5 for n in counts]    # 将那些对应count值大于5的地址全部输出
+>>> more5   # [False, False, True, False]
+>>> list(compress(addresses, more5))   # ['5800 E 58TH']
+关键点在于先创建一个Boolean序列，表示哪些元素满足条件，然后 compress() 函数根据这个序列去选择输出对应位置为True的元素
+----------------------------------------------------------------------------------------------------------------------
+1.17 从字典中提取子集
+prices = {
+    'ACME': 45.23,
+    'AAPL': 612.78,
+    'IBM': 205.55,
+    'HPQ': 37.20,
+    'FB': 10.75
+}
+# Make a dictionary of all prices over 200
+字典推导:    
+  p1 = {key: value for key, value in prices.items() if value > 200}
+创建一个元组序列然后把它传给 dict() 函数:（字典推导方式表意更清晰，并且实际上也会运行的更快）
+  p1 = dict((key, value) for key, value in prices.items() if value > 200)
+# Make a dictionary of tech stocks
+字典推导:  
+  tech_names = {'AAPL', 'IBM', 'HPQ', 'MSFT'}
+p2 = {key: value for key, value in prices.items() if key in tech_names}
+想找出符合条件的key，再通过key从字典中拿值：（比第一种方案慢1.6倍，如果对程序运行性能要求比较高，需要花点时间去做计时测试）
+p2 = { key:prices[key] for key in prices.keys() & tech_names }
+--------------------------------------------------------------------------------------------------------------------
+1.18 将名称映射到序列的元素中
+collections.namedtuple() 函数（命名元组）是一个工厂函数，它返回的是python中标准的元组类型的子类
+需要传递一个类型名称一级相应的字段，它会返回一个类，你可以初始化这个类，为你定义的字段传递值等
+>>> from collections import namedtuple
+>>> Subscriber = namedtuple('Subscriber', ['addr', 'joined'])
+>>> sub = Subscriber('jonesy@example.com', '2012-10-19')
+>>> sub        # Subscriber(addr='jonesy@example.com', joined='2012-10-19')
+>>> sub.addr   # 'jonesy@example.com'
+namedtuple的实例跟元组类型是可交换的，支持所有的普通元组操作，比如索引和分解
+>>> len(sub)   # 2
+>>> addr, joined = sub
+>>> addr       # 'jonesy@example.com'
+>>> joined     # '2012-10-19'
+namedtuple()的主要作用在于将代码同它所控制的元素位置间解耦
+普通元组代码：（下标操作通常会让代码表意不清晰，并且非常依赖记录的结构）
+def compute_cost(records):
+  total = 0.0
+  for rec in records:
+    total += rec[1] * rec[2]
+  return total
+命名元组的版本：
+from collections import namedtuple
+Stock = namedtuple('Stock', ['name', 'shares', 'price'])
+def compute_cost(records):
+    total = 0.0
+    for rec in records:
+        s = Stock(*rec)
+    total += s.shares * s.price
+    return total
+若 records 中的元素是某个类的实例，且已经有了这些属性，那可以直接通过属性名来访问，不需要通过位置来引用，没必要用命名元组
+namedtuple()可以作为字典的替代，字典需要更多的空间来存储，当要构建涉及字典的大型数据结构，使用namedtuple更高效（注意：但namedtuple是不可变的）
+若需要修改namedtuple的任何属性，可以用它的实例的_replace()方法，它会创建一个全新的命名元组并将对应的字段用新的值取代
+>>> s = s._replace(shares=75)
+>>> s   # Stock(name='ACME', shares=75, price=123.45)
+_replace()方法可以作为一种简便的方法填充具有可选或缺失字段的命名元组，把相应的值替换掉
+from collections import namedtuple
+Stock = namedtuple('Stock', ['name', 'shares', 'price', 'date', 'time'])
+# Create a prototype instance 
+stock_prototype = Stock('', 0, 0.0, None, None)   # 首先创建一个包含默认值的“原型”元组
+# Function to convert a dictionary to a Stock
+def dict_to_stock(s):
+    return stock_prototype._replace(**s)     # 然后使用_replace()方法创建一个新的实例
+a = {'name': 'ACME', 'shares': 100, 'price': 123.45}
+dict_to_stock(a)       # Stock(name='ACME', shares=100, price=123.45, date=None, time=None)
+重要：若目标是定义一个高效的数据结构，而且将来会修改各种实例属性，不要使用namedtuple，可以考虑定义一个使用__slots__属性的类
