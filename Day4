@@ -2,11 +2,9 @@
 最简单的过滤序列元素的方法就是使用列表推导（缺点是若原始输入非常大，可能会产生一个庞大的结果）
 >>> mylist = [1, 4, -5, 10, -7, 2, 3, -1]
 >>> [n for n in mylist if n > 0]    # [1, 4, 10, 2, 3]
->>> [n for n in mylist if n < 0]    # [-5, -7, -1]
 可以使用生成器表达式通过迭代的方式产生筛选结果
 >>> pos = (n for n in mylist if n > 0)
->>> pos
-<generator object <genexpr> at 0x1006a0eb0>
+>>> pos   # <generator object <genexpr> at 0x1006a0eb0>
 >>> for x in pos:
 ... print(x)
 列表推导式和生成器表达式具有同时对数据转换的能力
